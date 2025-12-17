@@ -1,9 +1,13 @@
 package com.military.app.service.impl;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.military.app.dto.UpdateUserRequest;
 import com.military.app.dto.UserProfileResponse;
 import com.military.app.dto.UserRequest;
 import com.military.app.entity.Role;
@@ -22,9 +26,11 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private RoleRepository roleRepository;
-    
+
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    // ================= AUTH MODULE =================
 
     @Override
     public User createUser(UserRequest request) {
@@ -43,53 +49,107 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    @Override
+    public UserProfileResponse getCurrentUserProfile(String username) {
+
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found");
+        }
+
+        return mapToProfile(user);
+    }
+
+    @Override
+    public void changePassword(String username, String oldPassword, String newPassword) {
+
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found");
+        }
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new UnauthorizedException("Old password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    // ================= USER MANAGEMENT MODULE =================
+
+    @Override
+    public List<UserProfileResponse> getAllUserProfiles() {
+        return userRepository.findAll()
+                .stream()
+                .map(this::mapToProfile)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public UserProfileResponse getUserProfileById(Long id) {
+        User user = getUserById(id);
+        return mapToProfile(user);
+    }
+
+    @Override
+    public void updateUser(Long id, UpdateUserRequest request) {
+
+        User user = getUserById(id);
+
+        // ❌ Username is NOT updatable
+        if (request.getRankName() != null) {
+            user.setRankName(request.getRankName());
+        }
+
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
+
+        if (request.getRoleId() != null) {
+            Role role = roleRepository.findById(request.getRoleId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+            user.setRole(role);
+        }
+
+        userRepository.save(user);
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        User user = getUserById(id);
+        userRepository.delete(user);
+    }
+
+    @Override
+    public List<UserProfileResponse> getUsersByRank(String rank) {
+        return userRepository.findByRankNameIgnoreCase(rank)
+                .stream()
+                .map(this::mapToProfile)
+                .collect(Collectors.toList());
+    }
+
+    // ================= INTERNAL USE ONLY =================
+
+    @Override
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    @Override
-    public User findByUsername(String username) {
-        return userRepository.findByUsername(username);
+    // ================= MAPPER =================
+
+    private UserProfileResponse mapToProfile(User user) {
+        UserProfileResponse dto = new UserProfileResponse();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setRole(user.getRole().getName());
+        dto.setRankName(user.getRankName());
+        dto.setActive(user.isActive());
+        return dto;
     }
-    
-    @Override
-    public UserProfileResponse getCurrentUserProfile(String username) {
-
-        User user = userRepository.findByUsername(username);
-
-        if (user == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-
-        UserProfileResponse response = new UserProfileResponse();
-        response.setId(user.getId());
-        response.setUsername(user.getUsername());
-        response.setRole(user.getRole().getName());
-        response.setRankName(user.getRankName());
-        response.setActive(user.isActive());
-
-        return response;
-    }
-    
-    @Override
-    public void changePassword(String username, String oldPassword, String newPassword) {
-
-        User user = userRepository.findByUsername(username);
-
-        if (user == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-
-        // 🔐 Verify old password
-        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-            throw new UnauthorizedException("Old password is incorrect");
-        }
-
-        // 🔐 Encrypt and update new password
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-    }
-
-
 }

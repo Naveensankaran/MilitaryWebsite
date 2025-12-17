@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.military.app.dto.BroadcastRankRequest;
+import com.military.app.dto.BroadcastUnitRequest;
 import com.military.app.dto.MessageResponse;
 import com.military.app.dto.SendMessageRequest;
 import com.military.app.dto.SentMessageStatusDto;
@@ -104,6 +106,59 @@ public class MessageController {
 
         return ResponseEntity.ok("Message deleted successfully");
     }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<String> broadcastMessage(
+            @RequestBody SendMessageRequest request,
+            Authentication authentication) {
+
+        User sender = userService.findByUsername(authentication.getName());
+
+        request.setSenderId(sender.getId());
+
+        messageService.broadcastMessage(request);
+
+        return ResponseEntity.ok("Broadcast message sent to all officers");
+    }
+
+    @PostMapping("/broadcast/rank")
+    public ResponseEntity<String> broadcastByRank(
+            @RequestBody BroadcastRankRequest request,
+            Authentication authentication) {
+
+        User sender = userService.findByUsername(authentication.getName());
+
+        messageService.broadcastByRank(
+                sender.getId(),
+                request.getRank(),
+                request.getContent(),
+                request.getAttachments()
+        );
+
+        return ResponseEntity.ok(
+                "Broadcast message sent to rank: " + request.getRank()
+        );
+    }
+    
+    @PostMapping("/broadcast/unit")
+    public ResponseEntity<String> broadcastByUnit(
+            @RequestBody BroadcastUnitRequest request,
+            Authentication authentication) {
+
+        User sender = userService.findByUsername(authentication.getName());
+
+        messageService.broadcastByUnit(
+                sender.getId(),
+                request.getUnit(),
+                request.getContent(),
+                request.getAttachments()
+        );
+
+        return ResponseEntity.ok(
+                "Broadcast message sent to unit: " + request.getUnit()
+        );
+    }
+
 
 
 }

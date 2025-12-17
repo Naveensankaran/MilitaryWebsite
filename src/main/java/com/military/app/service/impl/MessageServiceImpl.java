@@ -1,5 +1,7 @@
 package com.military.app.service.impl;
 
+//mport static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,8 +14,10 @@ import com.military.app.dto.SendMessageRequest;
 import com.military.app.dto.SentMessageStatusDto;
 import com.military.app.entity.Message;
 import com.military.app.entity.MessageRecipient;
+import com.military.app.entity.User;
 import com.military.app.repository.MessageRecipientRepository;
 import com.military.app.repository.MessageRepository;
+import com.military.app.repository.UserRepository;
 import com.military.app.service.AttachmentService;
 import com.military.app.service.MessageService;
 import com.military.app.util.AesEncryptor;
@@ -191,7 +195,92 @@ public class MessageServiceImpl implements MessageService {
 
         recipientRepository.delete(recipient);
     }
+    
+    @Autowired
+    private UserRepository userRepository;
 
+    @Override
+    public void broadcastMessage(SendMessageRequest request) {
+
+        // 1️⃣ Get all active users
+        List<User> users = userRepository.findAll();
+
+        // 2️⃣ Remove sender
+        List<Long> receiverIds = users.stream()
+                .filter(u -> u.isActive())
+                .filter(u -> !u.getId().equals(request.getSenderId()))
+                .map(User::getId)
+                .toList();
+
+        // 3️⃣ Attach receivers
+        request.setReceiverIds(receiverIds);
+
+        // 4️⃣ Reuse existing sendMessage logic
+        sendMessage(request);
+    }
+
+
+    @Override
+    public void broadcastByRank(
+            Long senderId,
+            String rank,
+            String content,
+            List<AttachmentRequest> attachments) {
+
+        // 1️⃣ Find users by rank
+        List<User> users = userRepository.findByRankNameIgnoreCase(rank);
+
+        // 2️⃣ Extract receiver IDs (exclude sender)
+        List<Long> receiverIds = users.stream()
+                .filter(User::isActive)
+                .filter(u -> !u.getId().equals(senderId))
+                .map(User::getId)
+                .toList();
+
+        if (receiverIds.isEmpty()) {
+            throw new RuntimeException("No officers found for rank: " + rank);
+        }
+
+        // 3️⃣ Build SendMessageRequest
+        SendMessageRequest request = new SendMessageRequest();
+        request.setSenderId(senderId);
+        request.setContent(content);
+        request.setReceiverIds(receiverIds);
+        request.setAttachments(attachments);
+
+        // 4️⃣ Reuse existing logic
+        sendMessage(request);
+    }
+
+   
+
+    @Override
+    public void broadcastByUnit(
+            Long senderId,
+            String unit,
+            String content,
+            List<AttachmentRequest> attachments) {
+
+        List<User> users = userRepository.findByRankNameIgnoreCase(unit);
+
+        List<Long> receiverIds = users.stream()
+                .filter(User::isActive)
+                .filter(u -> !u.getId().equals(senderId))
+                .map(User::getId)
+                .toList();
+
+        if (receiverIds.isEmpty()) {
+            throw new RuntimeException("No officers found in unit: " + unit);
+        }
+
+        SendMessageRequest request = new SendMessageRequest();
+        request.setSenderId(senderId);
+        request.setContent(content);
+        request.setReceiverIds(receiverIds);
+        request.setAttachments(attachments);
+
+        sendMessage(request);
+    }
 
 }
 
