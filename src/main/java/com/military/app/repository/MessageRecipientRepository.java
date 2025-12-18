@@ -13,5 +13,8 @@ public interface MessageRecipientRepository extends JpaRepository<MessageRecipie
 	  long countByMessageId(Long messageId);
 
 	  long countByMessageIdAndReadStatus(Long messageId, boolean readStatus);
+	  Optional<MessageRecipient> findByIdAndReceiverId(Long id, Long receiverId);
+	  long countByReadStatusFalse();
+
 
 }

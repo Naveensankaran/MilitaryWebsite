@@ -1,8 +1,7 @@
 package com.military.app.service;
 
-import java.util.Collections;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +24,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
+        }
+
+        if (!user.isActive()) {
+            throw new DisabledException("User account is disabled");
         }
 
         return org.springframework.security.core.userdetails.User

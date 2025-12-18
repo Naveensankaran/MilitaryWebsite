@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-
 public class AuditLog {
 
     @Id
@@ -14,14 +13,11 @@ public class AuditLog {
 
     private Long userId;
 
-    private String action;
+    private Long messageId;   // ✅ REQUIRED for message audit
 
-    private LocalDateTime actionTime = LocalDateTime.now();
+    private String action;    // SEND, READ, DELETE, LOGIN, LOGOUT
 
-	public AuditLog() {
-		super();
-		// TODO Auto-generated constructor stub
-	}
+    private LocalDateTime actionTime;
 
 	public Long getId() {
 		return id;
@@ -39,6 +35,14 @@ public class AuditLog {
 		this.userId = userId;
 	}
 
+	public Long getMessageId() {
+		return messageId;
+	}
+
+	public void setMessageId(Long messageId) {
+		this.messageId = messageId;
+	}
+
 	public String getAction() {
 		return action;
 	}
@@ -54,6 +58,8 @@ public class AuditLog {
 	public void setActionTime(LocalDateTime actionTime) {
 		this.actionTime = actionTime;
 	}
+
+    // getters & setters
     
     
 }

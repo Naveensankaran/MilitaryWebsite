@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -17,6 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.military.app.service.CustomUserDetailsService;
 
 @Configuration
+@EnableWebSecurity
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
@@ -30,33 +32,35 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+            // ❌ Disable CSRF for REST APIs
             .csrf(csrf -> csrf.disable())
+
+            // 🌍 Enable CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
+            // 🔐 Authorization rules
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/roles").permitAll()
+                // Public APIs
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/api/roles"
+                ).permitAll()
+
+                // Only ADMIN & COMMANDER can manage users
                 .requestMatchers("/api/users/**")
                     .hasAnyRole("ADMIN", "COMMANDER")
+
+                // Everything else requires login
                 .anyRequest().authenticated()
             )
 
-            .formLogin(form -> form
-                .loginProcessingUrl("/api/auth/login")
-                .successHandler((req, res, auth) -> res.setStatus(200))
-                .failureHandler((req, res, ex) -> res.setStatus(401))
-                .permitAll()
-            )
-
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
-            );
+            // ✅ Use SESSION authentication (no formLogin)
+            .httpBasic(httpBasic -> httpBasic.disable());
 
         return http.build();
     }
 
-    // 🔐 AUTH MANAGER
+    // 🔐 AUTHENTICATION MANAGER (DATABASE USERS)
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
 
@@ -76,7 +80,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // 🌍 CORS CONFIG INSIDE SAME CLASS
+    // 🌍 CORS CONFIG
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
