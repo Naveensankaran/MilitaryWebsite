@@ -7,9 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.military.app.entity.User;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
     User findByUsername(String username);
 
     List<User> findByRankNameIgnoreCase(String rankName);
-    long countByActiveTrue();
 
+    List<User> findByUnitIgnoreCase(String unit);   // ✅ NOW VALID
+
+	long countByActiveTrue();
 }

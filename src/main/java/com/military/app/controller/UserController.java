@@ -25,21 +25,16 @@ public class UserController {
         this.userService = userService;
     }
 
-    // GET ALL OFFICERS
     @GetMapping
     public List<UserProfileResponse> getAllUsers() {
         return userService.getAllUserProfiles();
     }
 
-    // GET OFFICER BY ID
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileResponse> getUserById(@PathVariable Long id) {
-        return ResponseEntity.ok(
-                userService.getUserProfileById(id)
-        );
+        return ResponseEntity.ok(userService.getUserProfileById(id));
     }
 
-    // UPDATE OFFICER
     @PutMapping("/{id}")
     public ResponseEntity<String> updateUser(
             @PathVariable Long id,
@@ -49,16 +44,20 @@ public class UserController {
         return ResponseEntity.ok("Officer updated successfully");
     }
 
-    // DELETE OFFICER
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.ok("Officer removed successfully");
     }
 
-    // GET BY RANK
     @GetMapping("/rank/{rank}")
     public List<UserProfileResponse> getUsersByRank(@PathVariable String rank) {
         return userService.getUsersByRank(rank);
+    }
+
+    // ✅ NEW
+    @GetMapping("/unit/{unit}")
+    public List<UserProfileResponse> getUsersByUnit(@PathVariable String unit) {
+        return userService.getUsersByUnit(unit);
     }
 }

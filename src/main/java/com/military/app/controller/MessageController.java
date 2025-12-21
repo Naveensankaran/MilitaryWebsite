@@ -33,9 +33,15 @@ public class MessageController {
 
     // SEND MESSAGE
     @PostMapping("/send")
-    public ResponseEntity<Message> sendMessage(@RequestBody SendMessageRequest request) {
-        Message msg = messageService.sendMessage(request);
-        return ResponseEntity.ok(msg);
+    public ResponseEntity<Message> sendMessage(
+            @RequestBody SendMessageRequest request,
+            Authentication authentication) {
+
+        User sender = userService.findByUsername(authentication.getName());
+
+        return ResponseEntity.ok(
+                messageService.sendMessage(request, sender.getId())
+        );
     }
 
     // INBOX
@@ -107,22 +113,26 @@ public class MessageController {
         return ResponseEntity.ok("Message deleted successfully");
     }
 
+ // BROADCAST ALL
     @PostMapping("/broadcast")
-    public ResponseEntity<String> broadcastMessage(
+    public ResponseEntity<String> broadcast(
             @RequestBody SendMessageRequest request,
             Authentication authentication) {
 
         User sender = userService.findByUsername(authentication.getName());
 
-        request.setSenderId(sender.getId());
+        messageService.broadcastMessage(
+                sender.getId(),
+                request.getContent(),
+                request.getAttachments()
+        );
 
-        messageService.broadcastMessage(request);
-
-        return ResponseEntity.ok("Broadcast message sent to all officers");
+        return ResponseEntity.ok("Broadcast sent");
     }
 
+ // BROADCAST RANK
     @PostMapping("/broadcast/rank")
-    public ResponseEntity<String> broadcastByRank(
+    public ResponseEntity<String> broadcastRank(
             @RequestBody BroadcastRankRequest request,
             Authentication authentication) {
 
@@ -135,13 +145,12 @@ public class MessageController {
                 request.getAttachments()
         );
 
-        return ResponseEntity.ok(
-                "Broadcast message sent to rank: " + request.getRank()
-        );
+        return ResponseEntity.ok("Broadcast sent to rank");
     }
     
+    // BROADCAST UNIT
     @PostMapping("/broadcast/unit")
-    public ResponseEntity<String> broadcastByUnit(
+    public ResponseEntity<String> broadcastUnit(
             @RequestBody BroadcastUnitRequest request,
             Authentication authentication) {
 
@@ -154,11 +163,10 @@ public class MessageController {
                 request.getAttachments()
         );
 
-        return ResponseEntity.ok(
-                "Broadcast message sent to unit: " + request.getUnit()
-        );
+        return ResponseEntity.ok("Broadcast sent to unit: "+request.getUnit());
+    }
     }
 
 
 
-}
+

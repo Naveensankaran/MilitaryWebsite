@@ -36,4 +36,6 @@ public class SecurityController {
     public List<LoginAttempt> getLoginAttempts() {
         return loginAttemptRepository.findAll();
     }
+    
+    
 }

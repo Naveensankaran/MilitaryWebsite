@@ -1,12 +1,9 @@
 package com.military.app.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 
 @Entity
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Table(name = "user")
 public class User {
 
     @Id
@@ -23,9 +20,14 @@ public class User {
     @JoinColumn(name = "role_id")
     private Role role;
 
+    @Column(nullable = false)
     private boolean active = true;
 
-    private String rankName;    // Optional: Major, Captain etc.
+    @Column(nullable = false)
+    private String rankName;   // Captain, Major
+
+    @Column(nullable = false)
+    private String unit;       // Signals, Infantry, Medical
 
 	public Long getId() {
 		return id;
@@ -75,10 +77,20 @@ public class User {
 		this.rankName = rankName;
 	}
 
+	public String getUnit() {
+		return unit;
+	}
+
+	public void setUnit(String unit) {
+		this.unit = unit;
+	}
+
 	public User() {
 		super();
 		// TODO Auto-generated constructor stub
 	}
+
+    // getters & setters
     
     
 }

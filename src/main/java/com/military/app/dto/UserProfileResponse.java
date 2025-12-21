@@ -6,7 +6,14 @@ public class UserProfileResponse {
     private String username;
     private String role;
     private String rankName;
-    private boolean active;
+    private String unit;
+    public String getUnit() {
+		return unit;
+	}
+	public void setUnit(String unit) {
+		this.unit = unit;
+	}
+	private boolean active;
 	public Long getId() {
 		return id;
 	}

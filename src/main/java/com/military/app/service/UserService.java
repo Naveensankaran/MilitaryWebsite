@@ -9,24 +9,20 @@ import com.military.app.entity.User;
 
 public interface UserService {
 
-    // ================= AUTH MODULE =================
+    // AUTH
     User createUser(UserRequest request);
     User findByUsername(String username);
     UserProfileResponse getCurrentUserProfile(String username);
     void changePassword(String username, String oldPassword, String newPassword);
 
-    // ================= USER MANAGEMENT MODULE =================
+    // USER MANAGEMENT
     List<UserProfileResponse> getAllUserProfiles();
-
     UserProfileResponse getUserProfileById(Long id);
-
     void updateUser(Long id, UpdateUserRequest request);
-
     void deleteUser(Long id);
 
     List<UserProfileResponse> getUsersByRank(String rank);
+    List<UserProfileResponse> getUsersByUnit(String unit); // ✅ added
 
-    // ================= INTERNAL USE ONLY =================
-    // ❌ Do NOT expose this in controllers
     User getUserById(Long id);
 }

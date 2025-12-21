@@ -1,6 +1,6 @@
 package com.military.app.service.impl;
 
-//mport static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+//import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,36 +33,43 @@ public class MessageServiceImpl implements MessageService {
 
     @Autowired
     private AttachmentService attachmentService;
+    
 
     // ---------------------------------------------------
     // SEND MESSAGE
     // ---------------------------------------------------
     @Override
-    public Message sendMessage(SendMessageRequest request) {
+    public Message sendMessage(SendMessageRequest request, Long senderId) {
 
-        // 1️⃣ Encrypt message before saving
+        if (request.getReceiverIds() == null || request.getReceiverIds().isEmpty()) {
+            throw new RuntimeException("Receiver list cannot be empty");
+        }
+
+        // ✅ Validate receivers
+        List<User> receivers = userRepository.findAllById(request.getReceiverIds());
+
+        if (receivers.size() != request.getReceiverIds().size()) {
+            throw new RuntimeException("One or more receivers not found");
+        }
+
+        // Encrypt content
         String encryptedContent = AesEncryptor.encrypt(request.getContent());
 
-        // 2️⃣ Create message entity
         Message message = new Message();
-        message.setSenderId(request.getSenderId());
+        message.setSenderId(senderId);
         message.setContent(encryptedContent);
         message.setSentAt(LocalDateTime.now());
 
-        // save message first to generate messageId
         message = messageRepository.save(message);
 
-        // 3️⃣ Save recipients
-        for (Long receiverId : request.getReceiverIds()) {
+        for (User receiver : receivers) {
             MessageRecipient recipient = new MessageRecipient();
             recipient.setMessageId(message.getId());
-            recipient.setReceiverId(receiverId);
+            recipient.setReceiverId(receiver.getId());
             recipient.setReadStatus(false);
-
             recipientRepository.save(recipient);
         }
 
-        // 4️⃣ Save attachments (if any)
         if (request.getAttachments() != null) {
             for (AttachmentRequest att : request.getAttachments()) {
                 attachmentService.saveAttachment(
@@ -200,38 +207,31 @@ public class MessageServiceImpl implements MessageService {
     private UserRepository userRepository;
 
     @Override
-    public void broadcastMessage(SendMessageRequest request) {
+    public void broadcastMessage(Long senderId, String content, List<AttachmentRequest> attachments) {
 
-        // 1️⃣ Get all active users
-        List<User> users = userRepository.findAll();
-
-        // 2️⃣ Remove sender
-        List<Long> receiverIds = users.stream()
-                .filter(u -> u.isActive())
-                .filter(u -> !u.getId().equals(request.getSenderId()))
+        List<Long> receiverIds = userRepository.findAll().stream()
+                .filter(User::isActive)
+                .filter(u -> !u.getId().equals(senderId))
                 .map(User::getId)
                 .toList();
 
-        // 3️⃣ Attach receivers
-        request.setReceiverIds(receiverIds);
+        if (receiverIds.isEmpty()) {
+            throw new RuntimeException("No active users found");
+        }
 
-        // 4️⃣ Reuse existing sendMessage logic
-        sendMessage(request);
+        SendMessageRequest request = new SendMessageRequest();
+        request.setContent(content);
+        request.setReceiverIds(receiverIds);
+        request.setAttachments(attachments);
+
+        sendMessage(request, senderId);
     }
 
 
     @Override
-    public void broadcastByRank(
-            Long senderId,
-            String rank,
-            String content,
-            List<AttachmentRequest> attachments) {
+    public void broadcastByRank(Long senderId, String rank, String content, List<AttachmentRequest> attachments) {
 
-        // 1️⃣ Find users by rank
-        List<User> users = userRepository.findByRankNameIgnoreCase(rank);
-
-        // 2️⃣ Extract receiver IDs (exclude sender)
-        List<Long> receiverIds = users.stream()
+        List<Long> receiverIds = userRepository.findByRankNameIgnoreCase(rank).stream()
                 .filter(User::isActive)
                 .filter(u -> !u.getId().equals(senderId))
                 .map(User::getId)
@@ -241,29 +241,20 @@ public class MessageServiceImpl implements MessageService {
             throw new RuntimeException("No officers found for rank: " + rank);
         }
 
-        // 3️⃣ Build SendMessageRequest
         SendMessageRequest request = new SendMessageRequest();
-        request.setSenderId(senderId);
         request.setContent(content);
         request.setReceiverIds(receiverIds);
         request.setAttachments(attachments);
 
-        // 4️⃣ Reuse existing logic
-        sendMessage(request);
+        sendMessage(request, senderId);
     }
 
    
 
     @Override
-    public void broadcastByUnit(
-            Long senderId,
-            String unit,
-            String content,
-            List<AttachmentRequest> attachments) {
+    public void broadcastByUnit(Long senderId, String unit, String content, List<AttachmentRequest> attachments) {
 
-        List<User> users = userRepository.findByRankNameIgnoreCase(unit);
-
-        List<Long> receiverIds = users.stream()
+        List<Long> receiverIds = userRepository.findByUnitIgnoreCase(unit).stream()
                 .filter(User::isActive)
                 .filter(u -> !u.getId().equals(senderId))
                 .map(User::getId)
@@ -274,12 +265,11 @@ public class MessageServiceImpl implements MessageService {
         }
 
         SendMessageRequest request = new SendMessageRequest();
-        request.setSenderId(senderId);
         request.setContent(content);
         request.setReceiverIds(receiverIds);
         request.setAttachments(attachments);
 
-        sendMessage(request);
+        sendMessage(request, senderId);
     }
 
 }

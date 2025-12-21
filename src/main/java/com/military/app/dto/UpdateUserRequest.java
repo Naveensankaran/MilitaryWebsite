@@ -3,6 +3,7 @@ package com.military.app.dto;
 
 public class UpdateUserRequest {
     private String rankName;
+    private String unit;
     private Long roleId;
     private Boolean active;
 
@@ -23,6 +24,12 @@ public class UpdateUserRequest {
 	}
 	public void setActive(Boolean active) {
 		this.active = active;
+	}
+	public String getUnit() {
+		return unit;
+	}
+	public void setUnit(String unit) {
+		this.unit = unit;
 	}
     
     

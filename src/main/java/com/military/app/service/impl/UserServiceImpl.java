@@ -38,15 +38,21 @@ public class UserServiceImpl implements UserService {
         Role role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
+        if (request.getUnit() == null || request.getUnit().isBlank()) {
+            throw new IllegalArgumentException("Unit is mandatory");
+        }
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRankName(request.getRankName());
-        user.setActive(true);
+        user.setUnit(request.getUnit());
         user.setRole(role);
+        user.setActive(true);
 
         return userRepository.save(user);
     }
+
 
     @Override
     public User findByUsername(String username) {
@@ -101,9 +107,12 @@ public class UserServiceImpl implements UserService {
 
         User user = getUserById(id);
 
-        // ❌ Username is NOT updatable
         if (request.getRankName() != null) {
             user.setRankName(request.getRankName());
+        }
+
+        if (request.getUnit() != null) {
+            user.setUnit(request.getUnit());
         }
 
         if (request.getActive() != null) {
@@ -149,7 +158,20 @@ public class UserServiceImpl implements UserService {
         dto.setUsername(user.getUsername());
         dto.setRole(user.getRole().getName());
         dto.setRankName(user.getRankName());
+        dto.setUnit(user.getUnit());   // ✅ added
         dto.setActive(user.isActive());
         return dto;
     }
+
+    
+    @Override
+    public List<UserProfileResponse> getUsersByUnit(String unit) {
+        return userRepository.findByUnitIgnoreCase(unit)
+                .stream()
+                .map(this::mapToProfile)
+                .toList();
+    }
+
+ 
+
 }
