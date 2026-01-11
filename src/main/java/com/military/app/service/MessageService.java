@@ -3,6 +3,9 @@ package com.military.app.service;
 import java.util.List;
 
 import com.military.app.dto.AttachmentRequest;
+import com.military.app.dto.ChatListResponse;
+import com.military.app.dto.ConversationMessageDto;
+import com.military.app.dto.InboxMessageResponse;
 import com.military.app.dto.MessageResponse;
 import com.military.app.dto.SendMessageRequest;
 import com.military.app.dto.SentMessageStatusDto;
@@ -12,7 +15,8 @@ public interface MessageService {
 
     Message sendMessage(SendMessageRequest request, Long senderId);
 
-    List<Message> getInbox(Long userId);
+   
+    List<InboxMessageResponse> getInbox(Long userId);
 
     List<Message> getSentMessages(Long userId);
 
@@ -31,4 +35,8 @@ public interface MessageService {
     void broadcastByRank(Long senderId, String rank, String content, List<AttachmentRequest> attachments);
 
     void broadcastByUnit(Long senderId, String unit, String content, List<AttachmentRequest> attachments);
+    
+    List<ConversationMessageDto> getConversation(Long otherUserId, Long loggedUserId);
+    
+    public List<ChatListResponse> getChatList(Long userId);
 }

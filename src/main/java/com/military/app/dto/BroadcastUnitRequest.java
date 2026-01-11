@@ -1,9 +1,7 @@
 package com.military.app.dto;
 
 import java.util.List;
-import lombok.Data;
 
-@Data
 public class BroadcastUnitRequest {
     private String unit;              // Example: Alpha, Bravo, Medical
     private String content;

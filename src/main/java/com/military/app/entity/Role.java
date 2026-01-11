@@ -1,12 +1,10 @@
 package com.military.app.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+
 
 @Entity
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+
 public class Role {
 
     @Id

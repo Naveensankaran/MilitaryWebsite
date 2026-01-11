@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.military.app.dto.BroadcastRankRequest;
 import com.military.app.dto.BroadcastUnitRequest;
+import com.military.app.dto.ChatListResponse;
+import com.military.app.dto.ConversationMessageDto;
+import com.military.app.dto.InboxMessageResponse;
 import com.military.app.dto.MessageResponse;
 import com.military.app.dto.SendMessageRequest;
 import com.military.app.dto.SentMessageStatusDto;
@@ -46,7 +49,9 @@ public class MessageController {
 
     // INBOX
     @GetMapping("/inbox/{userId}")
-    public ResponseEntity<List<Message>> getInbox(@PathVariable Long userId) {
+    public ResponseEntity<List<InboxMessageResponse>> getInbox(
+            @PathVariable Long userId) {
+
         return ResponseEntity.ok(messageService.getInbox(userId));
     }
 
@@ -112,6 +117,30 @@ public class MessageController {
 
         return ResponseEntity.ok("Message deleted successfully");
     }
+    
+    @GetMapping("/chats")
+    public ResponseEntity<List<ChatListResponse>> getChatList(
+            Authentication authentication) {
+
+        User user = userService.findByUsername(authentication.getName());
+        return ResponseEntity.ok(
+                messageService.getChatList(user.getId())
+        );
+    }
+
+    // RIGHT PANEL – CONVERSATION
+    @GetMapping("/conversation/{otherUserId}")
+    public ResponseEntity<List<ConversationMessageDto>> getConversation(
+            @PathVariable Long otherUserId,
+            Authentication authentication) {
+
+        User user = userService.findByUsername(authentication.getName());
+
+        return ResponseEntity.ok(
+                messageService.getConversation(otherUserId, user.getId())
+        );
+    }
+
 
  // BROADCAST ALL
     @PostMapping("/broadcast")

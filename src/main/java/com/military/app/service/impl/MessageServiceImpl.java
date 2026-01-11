@@ -3,12 +3,17 @@ package com.military.app.service.impl;
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.military.app.dto.AttachmentRequest;
+import com.military.app.dto.ChatListResponse;
+import com.military.app.dto.ConversationMessageDto;
+import com.military.app.dto.InboxMessageResponse;
 import com.military.app.dto.MessageResponse;
 import com.military.app.dto.SendMessageRequest;
 import com.military.app.dto.SentMessageStatusDto;
@@ -88,8 +93,27 @@ public class MessageServiceImpl implements MessageService {
     // INBOX
     // ---------------------------------------------------
     @Override
-    public List<Message> getInbox(Long userId) {
-        return messageRepository.findInboxByUserId(userId);
+    public List<InboxMessageResponse> getInbox(Long userId) {
+
+        List<Object[]> rows = messageRepository.findInboxDetailed(userId);
+
+        return rows.stream().map(row -> {
+            Message message = (Message) row[0];
+            MessageRecipient recipient = (MessageRecipient) row[1];
+            User sender = (User) row[2];
+
+            InboxMessageResponse dto = new InboxMessageResponse();
+            dto.setMessageId(message.getId());
+            dto.setSenderUsername(sender.getUsername());
+            dto.setSenderRole(sender.getRole().getName());
+            dto.setSenderRank(sender.getRankName());
+            dto.setSenderUnit(sender.getUnit());
+            dto.setContent(AesEncryptor.decrypt(message.getContent()));
+            dto.setSentAt(message.getSentAt());
+            dto.setReadStatus(recipient.isReadStatus());
+
+            return dto;
+        }).toList();
     }
 
     // ---------------------------------------------------
@@ -151,35 +175,33 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public MessageResponse getMessageById(Long messageId, Long userId) {
 
-        // 1️⃣ Fetch message
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
 
+        MessageRecipient recipient = recipientRepository
+                .findByMessageIdAndReceiverId(messageId, userId)
+                .orElse(null);
+
         boolean isSender = message.getSenderId().equals(userId);
+        boolean isReceiver = recipient != null;
 
-        // 2️⃣ If not sender, verify receiver
-        MessageRecipient recipient = null;
-        if (!isSender) {
-            recipient = recipientRepository
-                    .findByMessageIdAndReceiverId(messageId, userId)
-                    .orElseThrow(() -> new RuntimeException("Unauthorized access"));
-        }
-
-        // 3️⃣ Prepare response
         MessageResponse response = new MessageResponse();
         response.setId(message.getId());
         response.setSenderId(message.getSenderId());
         response.setContent(AesEncryptor.decrypt(message.getContent()));
         response.setSentAt(message.getSentAt());
 
-        // read status comes from recipient table
-        response.setReadStatus(
-                isSender ? false : recipient.isReadStatus()
-        );
+        // ✅ SELF MESSAGE OR NORMAL RECEIVER
+        if (isReceiver) {
+            response.setReadStatus(recipient.isReadStatus());
+        } else {
+            response.setReadStatus(false);
+        }
 
         return response;
     }
 
+    @Transactional
     @Override
     public void markAsRead(Long messageId, Long userId) {
 
@@ -270,6 +292,69 @@ public class MessageServiceImpl implements MessageService {
         request.setAttachments(attachments);
 
         sendMessage(request, senderId);
+    }
+    
+    @Override
+    public List<ChatListResponse> getChatList(Long userId) {
+
+        List<Object[]> rows = messageRepository.findChatList(userId);
+        List<ChatListResponse> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+
+            ChatListResponse dto = new ChatListResponse();
+            dto.setSenderId((Long) row[0]);
+            dto.setSenderName((String) row[1]);
+            dto.setRole((String) row[2]);
+            dto.setRankName((String) row[3]);
+            dto.setUnit((String) row[4]);
+            dto.setLastMessageTime((java.time.LocalDateTime) row[5]);
+            dto.setUnreadCount(((Number) row[6]).longValue());
+            dto.setLastMessage(
+                    AesEncryptor.decrypt((String) row[7])
+            );
+
+            result.add(dto);
+        }
+
+        return result;
+    }
+
+    // ================= CONVERSATION =================
+    @Override
+    public List<ConversationMessageDto> getConversation(
+            Long otherUserId,
+            Long loggedUserId
+    ) {
+
+        List<Object[]> rows =
+                messageRepository.findConversationFull(loggedUserId, otherUserId);
+
+        List<ConversationMessageDto> result = new ArrayList<>();
+
+        for (Object[] row : rows) {
+
+            Message message = (Message) row[0];
+            User sender = (User) row[1];
+            Boolean readStatus = (Boolean) row[2];
+
+            ConversationMessageDto dto = new ConversationMessageDto();
+            dto.setMessageId(message.getId());
+            dto.setSenderId(sender.getId());
+            dto.setSenderName(sender.getUsername());
+            dto.setSenderRole(sender.getRole().getName());
+            dto.setSenderRank(sender.getRankName());
+            dto.setSenderUnit(sender.getUnit());
+            dto.setContent(
+                    AesEncryptor.decrypt(message.getContent())
+            );
+            dto.setSentAt(message.getSentAt());
+            dto.setReadStatus(readStatus != null ? readStatus : true);
+
+            result.add(dto);
+        }
+
+        return result;
     }
 
 }

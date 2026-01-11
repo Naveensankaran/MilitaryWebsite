@@ -1,8 +1,6 @@
 package com.military.app.dto;
 
-import lombok.Data;
 
-@Data
 public class AdminDashboardResponse {
 
     private long totalUsers;
